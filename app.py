@@ -294,7 +294,8 @@ demo = gr.ChatInterface(
     examples=[
         "Tell me about your work experience",
         "What skills do you have?",
-        "What projects have you worked on?"
+        "What projects have you worked on?",
+        "Send a connecting email to receiver@gmail.com?"
     ],
     # Control chat display parameters
     chatbot=gr.Chatbot(
