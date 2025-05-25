@@ -1,0 +1,6 @@
+openai
+pypdf
+openai-agents
+pydantic
+python-dotenv
+gradio

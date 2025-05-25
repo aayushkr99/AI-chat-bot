@@ -1,0 +1,14 @@
+[project]
+name = "my-chat-bot"
+version = "0.1.0"
+dependencies = [
+    "dotenv>=0.9.9",
+    "gradio>=4.44.1",
+    "openai-agents>=0.0.15",
+    "pdfreader>=0.1.15",
+    "pypdf>=5.5.0",
+    "zep-cloud>=2.12.3",
+]
+
+[tool.uv]
+# Optional settings if you want to customize uv behavior
