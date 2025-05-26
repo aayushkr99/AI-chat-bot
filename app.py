@@ -5,7 +5,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from openai import OpenAI
 from pypdf import PdfReader
-from agents import Agent, Runner, function_tool,InputGuardrail, GuardrailFunctionOutput, handoff
+from agents import Agent, Runner, function_tool,InputGuardrail, GuardrailFunctionOutput, handoff, trace
 from agents.model_settings import ModelSettings
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -19,10 +19,10 @@ import threading
 from datetime import datetime, timedelta
 load_dotenv(override=True)
 # Rate limiter configuration
-RATE_LIMIT_REQUESTS = 10
+RATE_LIMIT_REQUESTS = 2
 RATE_LIMIT_WINDOW = 60  # 1 minute in seconds
 # Email-specific rate limiter configuration
-EMAIL_RATE_LIMIT_REQUESTS = 5  # Allow 5 emails per hour
+EMAIL_RATE_LIMIT_REQUESTS = 1  # Allow 5 emails per hour
 EMAIL_RATE_LIMIT_WINDOW = 60  # 1 hour in seconds
 # Rate limiter storage
 rate_limiter_data = {
@@ -231,9 +231,10 @@ standalone_agent = Agent(
     model="gpt-4o-mini",
 )
 async def standalone_guardrail(ctx, agent, input_data):
-    result = await Runner.run(standalone_agent, input_data, context=ctx.context)
-    print(f"standalone_guardrail -{result.final_output}")
-    return GuardrailFunctionOutput(output_info = result.final_output, tripwire_triggered=not result.final_output)
+    with trace("standalone_guardrail"):
+        result = await Runner.run(standalone_agent, input_data, context=ctx.context)
+        print(f"standalone_guardrail -{result.final_output}")
+        return GuardrailFunctionOutput(output_info = result.final_output, tripwire_triggered=not result.final_output)
 
 def onEmailHandOff(ctx, input):
     print(f"data {input}")
@@ -258,19 +259,20 @@ async def chat_with_agent_stream(message: str, history: list) -> AsyncGenerator[
             yield f"{error_message}"
             return
         # First get the complete response (we'll simulate streaming)
-        result = await Runner.run(conversational_agent, message)
-        full_response = result.final_output
+        with trace("conversational_agent"):
+            result = await Runner.run(conversational_agent, message)
+            full_response = result.final_output
         
         # Build up the response gradually
-        current_display = ""
-        for word in full_response.split():
-            current_display += word + " "
-            yield current_display  # Yield the complete response so far
-            await asyncio.sleep(0.10)  # Adjust speed as needed
+            current_display = ""
+            for word in full_response.split():
+                current_display += word + " "
+                yield current_display  # Yield the complete response so far
+                await asyncio.sleep(0.10)  # Adjust speed as needed
         
         # Ensure we yield the complete final response
-        if current_display.strip() != full_response.strip():
-            yield full_response
+            if current_display.strip() != full_response.strip():
+                yield full_response
             
     except Exception as e:
         yield f"Error: {str(e)}"
